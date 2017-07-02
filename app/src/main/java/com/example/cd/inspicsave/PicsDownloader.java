@@ -2,6 +2,7 @@ package com.example.cd.inspicsave;
 
 import android.util.Log;
 
+import org.json.JSONException;
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
@@ -17,6 +18,8 @@ import java.io.UnsupportedEncodingException;
 import java.net.MalformedURLException;
 import java.net.URL;
 import java.net.URLConnection;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Locale;
 
 /**
@@ -85,13 +88,32 @@ public class PicsDownloader implements Runnable{
         }
     }
 
-    private String findPicScr(String html){
-        //#pImage_11
-        ////*[@id="pImage_12"]
-        Document doc = Jsoup.parse(html);
-        Elements elem = doc.select("meta[property = og:image]");
-        return elem.attr("content");
+//    private String findPicScr(String html){
+//        //#pImage_11
+//        ////*[@id="pImage_12"]
+//        Document doc = Jsoup.parse(html);
+//        Elements elem = doc.select("meta[property = og:image]");
+//        return elem.attr("content");
+//    }
+
+    private List<String> GetAllPicURL(String html){
+        try {
+            InsHtmlAnalisis insHA = new InsHtmlAnalisis(html);
+            return new ArrayList<String>(insHA.getAllImageURL());
+        }  catch (Exception e) {
+            if (e instanceof AnalysisException || e instanceof JSONException){
+                Document doc = Jsoup.parse(html);
+                Elements elem = doc.select("meta[property = og:image]");
+                ArrayList rtn = new ArrayList<String>();
+                rtn.add(elem.attr("content"));
+                return rtn;
+            }
+            else{
+                return null;
+            }
+        }
     }
+
 
     private byte[] downloadImage(String imageUrl){
         byte[] readData;
@@ -141,8 +163,13 @@ public class PicsDownloader implements Runnable{
                 return;
             }
             father.sendMsgToMe(MainActivity.HTML_DOWNLOADEDED);
+            List<String> PicURLs = GetAllPicURL(html);
 
-            byte[] downloadedData = downloadImage(findPicScr(html));
+            if (PicURLs == null){
+                return;
+            }
+            
+            byte[] downloadedData = downloadImage();
             if(downloadedData == null){
                 return;
             }

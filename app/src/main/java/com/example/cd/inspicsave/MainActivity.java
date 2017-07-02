@@ -31,6 +31,7 @@ import java.net.URLClassLoader;
 import java.text.SimpleDateFormat;
 import java.util.Calendar;
 import java.util.GregorianCalendar;
+import java.util.List;
 import java.util.Locale;
 
 public class MainActivity extends AppCompatActivity implements View.OnClickListener, PicsDownloader.PicdataInteraction {
@@ -58,7 +59,9 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     private TextView showHtml = null;
 
     private String mainhtml;
-    private byte[] Image;
+
+    private List<byte[]> Images;
+    private byte[] curImage;
 
     private static MainActivity me;
 
