@@ -1,5 +1,7 @@
 package com.example.cd.inspicsave;
 
+import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
 import android.util.Log;
 
 import org.json.JSONException;
@@ -28,7 +30,8 @@ import java.util.Locale;
 public class PicsDownloader implements Runnable{
 
     private final String TAG_DWNLD = "PICDOWNLOAD";
-    private final int TIME_OUT = 5000;
+
+    private final int TIME_OUT = 3000;
 
     final private String USER_AGENT = "Mozilla/5.0 (Linux; U; Android "
             + android.os.Build.VERSION.RELEASE + ";"
@@ -36,15 +39,31 @@ public class PicsDownloader implements Runnable{
             + "/" + android.os.Build.ID + ")";
 
     private final PicdataInteraction mPicdataIA;
+
     private final MainActivity father;
 
     private URL url;
 
+    /**
+     *
+     * @param initedMethods
+     */
     public PicsDownloader(PicdataInteraction initedMethods){
+
         this.mPicdataIA = initedMethods;
+
         this.father = MainActivity.getMainActivity();
+
     }
 
+    /**
+     *
+     * @param inStream
+     * @return
+     * @throws IOException
+     *
+     * Read from InputStream
+     */
     public static byte[] readInputStream(InputStream inStream) throws IOException {
         ByteArrayOutputStream outStream = new ByteArrayOutputStream();
         byte[] buffer = new byte[1024];
@@ -55,15 +74,21 @@ public class PicsDownloader implements Runnable{
         return outStream.toByteArray();
     }
 
+    /**
+     * @return
+     * Download html from target html page url.
+     */
     private String getHtmlOfImage(){
 
         try {
             String htmlCharset = null;
+
             URLConnection urlConnection = url.openConnection();
 
             urlConnection.setConnectTimeout(TIME_OUT);
 
             String rawTypeString = urlConnection.getContentType();
+
 
             if (rawTypeString == null) {
                 htmlCharset = "utf-8";
@@ -74,16 +99,19 @@ public class PicsDownloader implements Runnable{
                 } else {
                     htmlCharset = ContentInfos[1];
                 }
-
             }
+
             InputStream inStream = urlConnection.getInputStream();
 
             byte[] readData = readInputStream(inStream);
 
+            if (readData == null || readData.length < 1){
+                return null;
+            }
+
             return new String(readData, htmlCharset);
 
         }catch (IOException e){
-            father.sendMsgToMe(MainActivity.HTML_ANALYSIS_FAILED);
             return null;
         }
     }
@@ -98,16 +126,21 @@ public class PicsDownloader implements Runnable{
 
     private List<String> GetAllPicURL(String html){
         try {
+
             InsHtmlAnalisis insHA = new InsHtmlAnalisis(html);
-            return new ArrayList<String>(insHA.getAllImageURL());
+
+            return new ArrayList<>(insHA.getAllImageURL());
+
         }  catch (Exception e) {
+
             if (e instanceof AnalysisException || e instanceof JSONException){
                 Document doc = Jsoup.parse(html);
                 Elements elem = doc.select("meta[property = og:image]");
-                ArrayList rtn = new ArrayList<String>();
+                List<String> rtn = new ArrayList<>();
                 rtn.add(elem.attr("content"));
                 return rtn;
             }
+
             else{
                 return null;
             }
@@ -147,53 +180,77 @@ public class PicsDownloader implements Runnable{
         }
     }
 
+    public URL analyURL(String iURL){
+        URL rtnURL;
+        try {
+            rtnURL = new URL(iURL);
+        } catch (MalformedURLException e) {
+            e.printStackTrace();
+            return null;
+        }
+        if (!rtnURL.getProtocol().equals("https")){
+            return null;
+        }
+        if (!rtnURL.getHost().equals("www.instagram.com")){
+            return null;
+        }
+        return rtnURL;
+    }
+
     @Override
     public void run(){
         try {
-            url = mPicdataIA.shareUrl();
-            if(url == null){
+
+            if(null == (url = analyURL(mPicdataIA.setTargetURL()))){
                 father.sendMsgToMe(MainActivity.INVALID_INPUT);
                 return;
             }
 
-            String protocol = url.getProtocol();
-
             String html = getHtmlOfImage();
+
             if (html == null) {
+                father.sendMsgToMe(MainActivity.HTML_ANALYSIS_FAILED);
                 return;
             }
+
+            /**
             father.sendMsgToMe(MainActivity.HTML_DOWNLOADEDED);
+            **/
+
             List<String> PicURLs = GetAllPicURL(html);
 
             if (PicURLs == null){
+                father.sendMsgToMe(MainActivity.HTML_ANALYSIS_FAILED);
                 return;
             }
-            List<byte[]> PicDatas = new ArrayList<>();
+
+            List<Bitmap> PicsData = new ArrayList<>();
+
             for (String picURL : PicURLs){
                 byte[] downloadedData = downloadImage(picURL);
+
                 if(downloadedData == null){
+                    father.sendMsgToMe(MainActivity.PIC_DOWNLOAD_FAILED);
                     return;
                 }
-                PicDatas.add(downloadedData);
+                PicsData.add(BitmapFactory.decodeByteArray(downloadedData, 0, downloadedData.length));
             }
 
-            father.getPicsData(PicDatas);
+            father.getPicsData(PicsData);
 
 //            father.getPicdata(downloadedData);
 
             father.sendMsgToMe(MainActivity.PIC_DOWNLOADED);
 
         } catch (Exception e) {
-            e.printStackTrace();
-            father.sendMsgToMe(MainActivity.INVALID_INPUT);
+            father.sendMsgToMe(MainActivity.UNKNOW_ERROR);
         }
     }
 
     interface PicdataInteraction{
         String setTargetURL();
-        void getPicsData(List<byte[]> picsData);
         void getPicdata(byte[] picdata);
+        void getPicsData(List<Bitmap> picsData);
         void test_html(String html);
-        URL shareUrl() throws Exception;
     }
 }
