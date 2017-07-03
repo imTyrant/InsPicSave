@@ -11,10 +11,13 @@ import android.os.Handler;
 import android.os.Looper;
 import android.os.Message;
 import android.provider.MediaStore;
+import android.support.v4.view.PagerAdapter;
+import android.support.v4.view.ViewPager;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
 import android.util.Log;
 import android.view.View;
+import android.view.ViewGroup;
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.ImageView;
@@ -29,6 +32,7 @@ import java.net.MalformedURLException;
 import java.net.URL;
 import java.net.URLClassLoader;
 import java.text.SimpleDateFormat;
+import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.GregorianCalendar;
 import java.util.List;
@@ -49,19 +53,26 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     private final String savePath = Environment.getExternalStorageDirectory().getAbsolutePath() + "/InsPics/";
 
     private Button getUrl;
-    private Button save;
+
     private EditText inputUrl;
 
     private ProgressDialog detailDialog = null;
 
     private ImageView showImage = null;
 
+    private List<ImageView> showImages = null;
+
+    private ViewPager viewPager = null;
+
     private TextView showHtml = null;
+    /*********************************************************/
+    private int currentPic = 0;
+
+    private int totalImageNum = 0;
 
     private String mainhtml;
 
     private List<byte[]> Images;
-    private byte[] curImage;
 
     private static MainActivity me;
 
@@ -77,16 +88,15 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         me = this;
 
         getUrl = (Button) findViewById(R.id.b_ok);
-        save = (Button) findViewById(R.id.b_save);
         inputUrl = (EditText) findViewById(R.id.i_url);
 
+        showImages = new ArrayList<>();
 
 //        showHtml = (TextView) findViewById(R.id.o_html);
-        showImage = (ImageView) findViewById(R.id.showImage);
+//        showImage = (ImageView) findViewById(R.id.showImage);
+        viewPager = (ViewPager)findViewById(R.id.showImages);
 
         getUrl.setOnClickListener(this);
-        save.setOnClickListener(this);
-
 
 
     }
@@ -95,12 +105,12 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     public void onClick(View v) {
         switch (v.getId()) {
             case R.id.b_ok:
-                detailDialog = ProgressDialog.show(this, "DownLoading..","Please Wait", true, false);
+//                detailDialog = ProgressDialog.show(this, "DownLoading..","Please Wait", true, false);
                 new Thread(new PicsDownloader(this)).start();
                 break;
             case R.id.b_save:
-                detailDialog = ProgressDialog.show(this, "Saving..","Please Wait", true, false);
-                new Thread(savePicToLocal).start();
+//                detailDialog = ProgressDialog.show(this, "Saving..","Please Wait", true, false);
+//                new Thread(savePicToLocal).start();
                 break;
             default:
                 break;
@@ -118,11 +128,12 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                     }
                     break;
                 case PIC_DOWNLOADED:
-                    detailDialog.dismiss();
-                    if (showImage != null) {
-                        Bitmap bm = BitmapFactory.decodeByteArray(Image, 0, Image.length);
-                        showImage.setImageBitmap(bm);
-                    }
+                    viewPager.setAdapter(new PicPageAdapter());
+//                    detailDialog.dismiss();
+//                    if (showImage != null) {
+//                        Bitmap bm = BitmapFactory.decodeByteArray(Images.get(cur), 0, Images.get(cur).length);
+//                        showImage.setImageBitmap(bm);
+//                    }
                     break;
                 case PIC_SAVED:
                     detailDialog.dismiss();
@@ -150,62 +161,77 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         }
     };
 
-    Runnable savePicToLocal = new Runnable() {
-        @Override
-        public void run() {
-            if(Image == null || Image.length <= 0){
-                sendMsgToMe(PIC_SAVE_FAILED);
-                return;
-            }
-            File root = new File(savePath);
-            if(!root.exists()){
-                root.mkdir();
-            }
-            Calendar now = new GregorianCalendar();
-            SimpleDateFormat simpleDate = new SimpleDateFormat("yyyyMMddHHmmss", Locale.getDefault());
-            String picName = "INS_" + simpleDate.format(now.getTime());
-            if(Image[6] == 'J' && Image[7] == 'F' && Image[8] == 'I' && Image[9] == 'F'){
-                picName += ".jpg";
-            }
-            else if(Image[1] == 'P' && Image[2] == 'N' && Image[3] == 'G'){
-                picName += ".png";
-            }
-            else if(Image[0] == 'G' && Image[1] == 'I' && Image[2] == 'F'){
-                picName += ".gif";
-
-            }
-            else{
-                sendMsgToMe(PIC_DECODE_FAILED);
-                return;
-            }
-            try{
-                File meta = new File(savePath + picName);
-                FileOutputStream out = new FileOutputStream(meta);
-                out.write(Image);
-                out.close();
-                sendMsgToMe(PIC_SAVED);
-            } catch (IOException e){
-                Log.e(LOG_TAG, e.getCause().toString());
-                e.printStackTrace();
-            }
-            try{
-                MediaStore.Images.Media.insertImage(me.getContentResolver(),savePath,picName,null);
-            } catch (FileNotFoundException e) {
-                e.printStackTrace();
-            }
-            me.sendBroadcast(new Intent(Intent.ACTION_MEDIA_SCANNER_SCAN_FILE, Uri.parse("file://" + savePath + picName)));
-        }
-    };
+//    Runnable savePicToLocal = new Runnable() {
+//        @Override
+//        public void run() {
+//            if(Image == null || Image.length <= 0){
+//                sendMsgToMe(PIC_SAVE_FAILED);
+//                return;
+//            }
+//            File root = new File(savePath);
+//            if(!root.exists()){
+//                root.mkdir();
+//            }
+//            Calendar now = new GregorianCalendar();
+//            SimpleDateFormat simpleDate = new SimpleDateFormat("yyyyMMddHHmmss", Locale.getDefault());
+//            String picName = "INS_" + simpleDate.format(now.getTime());
+//            if(Image[6] == 'J' && Image[7] == 'F' && Image[8] == 'I' && Image[9] == 'F'){
+//                picName += ".jpg";
+//            }
+//            else if(Image[1] == 'P' && Image[2] == 'N' && Image[3] == 'G'){
+//                picName += ".png";
+//            }
+//            else if(Image[0] == 'G' && Image[1] == 'I' && Image[2] == 'F'){
+//                picName += ".gif";
+//
+//            }
+//            else{
+//                sendMsgToMe(PIC_DECODE_FAILED);
+//                return;
+//            }
+//            try{
+//                File meta = new File(savePath + picName);
+//                FileOutputStream out = new FileOutputStream(meta);
+//                out.write(Image);
+//                out.close();
+//                sendMsgToMe(PIC_SAVED);
+//            } catch (IOException e){
+//                Log.e(LOG_TAG, e.getCause().toString());
+//                e.printStackTrace();
+//            }
+//            try{
+//                MediaStore.Images.Media.insertImage(me.getContentResolver(),savePath,picName,null);
+//            } catch (FileNotFoundException e) {
+//                e.printStackTrace();
+//            }
+//            me.sendBroadcast(new Intent(Intent.ACTION_MEDIA_SCANNER_SCAN_FILE, Uri.parse("file://" + savePath + picName)));
+//        }
+//    };
 
     public void sendMsgToMe(int state){
         handler.obtainMessage(state).sendToTarget();
     }
 
     @Override
-    public void getPicdata(byte[] picdata) {
-        Image = picdata;
+    public void getPicsData(List<byte[]> picsData){
+        Images = picsData;
+        totalImageNum = picsData.size();
+        for (byte[] im : Images){
+            Bitmap bm = BitmapFactory.decodeByteArray(im, 0, im.length);
+            ImageView imageView = new ImageView(this);
+            imageView.setImageBitmap(bm);
+            showImages.add(imageView);
+        }
     }
 
+    @Override
+    public void getPicdata(byte[] picdata) {
+//        Image = picdata;
+    }
+    @Override
+    public String setTargetURL(){
+        return inputUrl.getText().toString();
+    }
     @Override
     public URL shareUrl() throws MalformedURLException {
         String inputString = inputUrl.getText().toString();
@@ -218,5 +244,48 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     @Override
     public void test_html(String html){
         mainhtml = html;
+    }
+
+    private class PicPagerListener implements ViewPager.OnPageChangeListener {
+
+        @Override
+        public void onPageScrolled(int position, float positionOffset, int positionOffsetPixels) {
+
+        }
+
+        @Override
+        public void onPageSelected(int position) {
+
+        }
+
+        @Override
+        public void onPageScrollStateChanged(int state) {
+
+        }
+    }
+
+    private class PicPageAdapter extends PagerAdapter {
+
+        @Override
+        public int getCount() {
+            return totalImageNum;
+        }
+
+        @Override
+        public boolean isViewFromObject(View view, Object object) {
+            return view == object;
+        }
+
+        @Override
+        public void destroyItem (ViewGroup container, int position, Object object) {
+            container.removeView(showImages.get(position));
+        }
+
+        @Override
+        public Object instantiateItem (ViewGroup container, int position) {
+            container.addView(showImages.get(position));
+            return showImages.get(position);
+        }
+
     }
 }

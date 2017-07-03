@@ -168,13 +168,18 @@ public class PicsDownloader implements Runnable{
             if (PicURLs == null){
                 return;
             }
-            
-            byte[] downloadedData = downloadImage();
-            if(downloadedData == null){
-                return;
+            List<byte[]> PicDatas = new ArrayList<>();
+            for (String picURL : PicURLs){
+                byte[] downloadedData = downloadImage(picURL);
+                if(downloadedData == null){
+                    return;
+                }
+                PicDatas.add(downloadedData);
             }
 
-            father.getPicdata(downloadedData);
+            father.getPicsData(PicDatas);
+
+//            father.getPicdata(downloadedData);
 
             father.sendMsgToMe(MainActivity.PIC_DOWNLOADED);
 
@@ -185,8 +190,10 @@ public class PicsDownloader implements Runnable{
     }
 
     interface PicdataInteraction{
-        void test_html(String html);
+        String setTargetURL();
+        void getPicsData(List<byte[]> picsData);
         void getPicdata(byte[] picdata);
+        void test_html(String html);
         URL shareUrl() throws Exception;
     }
 }
