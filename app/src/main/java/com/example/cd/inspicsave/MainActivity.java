@@ -73,9 +73,9 @@ public class MainActivity extends AppCompatActivity implements View.OnLongClickL
     /*********************************************************/
     private int currentPage = 0;
 
-    private int totalImageNum = 0;
+    private int pageToBeDownload = 0;
 
-    private Bitmap showingImage;
+    private int totalImageNum = 0;
 
     private String mainhtml;
 
@@ -159,6 +159,7 @@ public class MainActivity extends AppCompatActivity implements View.OnLongClickL
                     break;
                 case PIC_DOWNLOADED:
                     viewPager.setAdapter(new PicPageAdapter());
+                    viewPager.addOnPageChangeListener(new PicPagerListener());
                     detailDialog.dismiss();
 //                    if (showImage != null) {
 //                        Bitmap bm = BitmapFactory.decodeByteArray(Images.get(cur), 0, Images.get(cur).length);
@@ -199,7 +200,7 @@ public class MainActivity extends AppCompatActivity implements View.OnLongClickL
         @Override
         public void run() {
 
-            if(showingImage == null){
+            if(Images == null || Images.size() < pageToBeDownload){
                 sendMsgToMe(PIC_SAVE_FAILED);
                 return;
             }
@@ -227,7 +228,7 @@ public class MainActivity extends AppCompatActivity implements View.OnLongClickL
             try{
                 File meta = new File(savePath + picName);
                 FileOutputStream out = new FileOutputStream(meta);
-                showingImage.compress(Bitmap.CompressFormat.PNG, 100, out);
+                Images.get(pageToBeDownload).compress(Bitmap.CompressFormat.PNG, 100, out);
                 out.close();
                 sendMsgToMe(PIC_SAVED);
             } catch (IOException e){
@@ -326,22 +327,18 @@ public class MainActivity extends AppCompatActivity implements View.OnLongClickL
         @Override
         public Object instantiateItem (ViewGroup container, final int position) {
 
-            currentPage = position;
-            showingImage = Images.get(position);
-
             ImageView cur = showImages.get(position);
 
             cur.setOnLongClickListener(new View.OnLongClickListener() {
                 @Override
                 public boolean onLongClick(View v) {
-//                    new Thread(savePicToLocal).start();
+                    pageToBeDownload = viewPager.getCurrentItem();
                     AlertDialog.Builder builder = new AlertDialog.Builder(me);
-                    builder.setMessage("Save This Image To Local?")
+                    builder.setMessage("Save This Picture To Local?")
                             .setCancelable(true)
                             .setPositiveButton("Yes", new DialogInterface.OnClickListener() {
                                 public void onClick(DialogInterface dialog, int id) {
                                     new Thread(savePicToLocal).start();
-//                                    dialog.cancel();
                                 }
                             })
                             .setNegativeButton("No", new DialogInterface.OnClickListener() {
